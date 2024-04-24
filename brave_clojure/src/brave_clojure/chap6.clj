@@ -11,7 +11,7 @@
 ;; Namespaces contain maps between human-readable symbols
 ;; and references to addresses in memory (called vars). Think of 
 ;; the namespace as a shelf in a bookshelf. then each function name 
-;; in a namespace is a book on that shelf. 
+;; is a namespace is a book on that shelf. 
 
 ;; refer to the current namespace using *ns*, and get its name
 ;; using (ns-name *ns*)
@@ -34,6 +34,8 @@
 ;; 2. find a free storage shelf
 ;; 3. store ["boop" "bop"] on the shelf
 ;; 4. write the address of the shelf on the VAR. 
+
+
 ;; 5. return the var => #'brave-clojure.chap6/great-books
 
 ;; this is known as `interning` a var. you can interact w the map of 

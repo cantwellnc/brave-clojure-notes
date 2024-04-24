@@ -291,7 +291,7 @@ report (do (Thread/sleep 1000) (+ 1 1)))
 
 ;; Macros all the way down
 
-;; They can only ocmpose with each other, so writing one can result in writing many, depending on where you want to use it.
+;; They can only compose with each other, so writing one can result in writing many, depending on where you want to use it.
 
 (doseq [code ['(= 1 1) '(= 1 2)]]
   (report code))
@@ -307,4 +307,124 @@ report (do (Thread/sleep 1000) (+ 1 1)))
 (doseq-macro report (= 1 1) (= 1 2))
 
 
-(+)
+
+;; EXERCISES
+
+;; Write a macro if-valid that will help us validate an order by looking at the inputs + validations to perform, + telling us what was invalid and WHY.
+
+(def order-details
+{:name "Mitchard Blimmons"
+ :email "mitchard.blimmonsgmail.com"})
+
+;; WANT
+(validate order-details order-details-validations)
+; => {:email ["Your email address doesn't look like an email address."]}
+
+;; validations to run
+(def order-details-validations
+{:name
+ ["Please enter a name" not-empty]
+
+ :email
+ ["Please enter an email address" not-empty
+
+  "Your email address doesn't look like an email address"
+  #(or (empty? %) (re-seq #"@" %))]})
+
+(defn error-messages-for
+"Return a seq of error messages"
+[to-validate message-validator-pairs]
+(map first (filter #(not ((second %) to-validate))
+                   (partition 2 message-validator-pairs))))
+
+(error-messages-for "" ["Please enter a name" not-empty])
+
+;; now we just need to accumulate these vals
+
+(defn validate
+"Returns a map with a vector of errors for each key"
+[to-validate validations]
+(reduce (fn [errors validation]
+          (let [[fieldname validation-check-groups] validation
+                value (get to-validate fieldname)
+                error-messages (error-messages-for value validation-check-groups)]
+            (if (empty? error-messages)
+              errors
+              (assoc errors fieldname error-messages))))
+        {}
+        validations))
+
+(validate order-details order-details-validations)
+
+;; nice! now we can do validations. the use of this will often look like this:
+
+(let [errors (validate order-details order-details-validations)]
+(if (empty? errors)
+  (println :success)
+  (println :failure errors)))
+
+
+;; Let's write a macro to set up this pattern!
+
+;; Want:
+(if-valid order-details order-details-validations errors
+          (render :success)
+          (render :failure))
+
+
+(defmacro if-valid
+  [to-validate
+   validations
+   & body]
+  `(let [errors# (validate ~to-validate ~validations)]
+     (if (empty? errors#)
+       ~@body)))
+
+(macroexpand (if-valid order-details order-details-validations
+               (println :success)
+               (println :failure)))
+
+
+;; EXERCISES
+
+;; 1) write when-valid
+
+;;(when-valid order-details order-details-validations
+;; (println "It's a success!")
+;; (render :success))
+
+(defmacro when-valid
+  [to-validate
+   validations
+   & body]
+  `(let [errors# (validate ~to-validate ~validations)]
+     (when (empty? errors#)
+       ~@body)))
+
+
+(when-valid order-details order-details-validations
+  (println "It's a success!")
+  (println :success))
+
+
+;; 2) implement `or` as a macro.
+
+(defmacro and-
+([] true)
+([x] x)
+([x & next] ;; variadics!
+ `(let [and# ~x]
+    (if and# (and- ~@next) and#))))
+
+
+
+;; DON'T FORGET PARENS WHEN BUILDING VARIADIC FNS
+(defmacro my-or
+  ([] false)
+  ([x] x) ;; originally I had ~x here; this doesn't make any sense to do since we are not already quoting something. 
+  ([x & more] `(let [or# ~x] 
+                 (if or#
+                   or#
+                   (my-or ~@more)))))
+
+(my-or nil false)
